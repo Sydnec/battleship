@@ -1,0 +1,328 @@
+@using BattleShip.App.Services
+@inject IBattleShipService ApiService
+@inject GameState GameState
+@implements IDisposable
+
+<div class="game-container">
+    <h2>🎮 Bataille Navale</h2>
+
+    @if (GameState.GameStatus == "NotStarted")
+    {
+        <div class="start-screen">
+            <h3>Bienvenue !</h3>
+            <p>Choisissez une difficulté et démarrez la partie :</p>
+            <div class="difficulty-buttons">
+                <button class="btn btn-easy" @onclick="@(() => StartGame("Easy"))">Facile (9x9)</button>
+                <button class="btn btn-medium" @onclick="@(() => StartGame("Medium"))">Moyen (10x10)</button>
+                <button class="btn btn-hard" @onclick="@(() => StartGame("Hard"))">Difficile (11x11)</button>
+            </div>
+        </div>
+    }
+    else if (GameState.GameStatus == "Playing")
+    {
+        <div class="game-info">
+            <p>🎯 Coups joués : @GameState.MovesCount</p>
+            <p>⚓ Bateaux : @string.Join(", ", GameState.Ships.Select(s => $"{s.Letter} ({s.Size})"))</p>
+        </div>
+
+        <!-- Statistiques de la partie -->
+        <div class="stats-panel">
+            <div class="stat-box">
+                <div class="stat-label">Vos Tirs</div>
+                <div class="stat-value">@GameState.PlayerHits / @(GameState.PlayerHits + GameState.PlayerMisses)</div>
+                <div class="stat-accuracy">@GetAccuracy(GameState.PlayerHits, GameState.PlayerMisses)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Bateaux Coulés</div>
+                <div class="stat-value">Vous: @GameState.ComputerShipsSunk | IA: @GameState.PlayerShipsSunk</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Durée</div>
+                <div class="stat-value">@GetDuration()</div>
+            </div>
+        </div>
+
+        <!-- Notifications de bateaux coulés -->
+        @if (GameState.RecentlySunkShips.Any())
+        {
+            <div class="sunk-notifications">
+                @foreach (var ship in GameState.RecentlySunkShips)
+                {
+                    <div class="sunk-notification">
+                        🚢 @ship coulé !
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="grids-container">
+            <!-- Grille du joueur -->
+            <div class="grid-section">
+                <h3>🛡️ Votre Grille</h3>
+                <div class="grid player-grid">
+                    @for (int row = 0; row < GameState.GridSize; row++)
+                    {
+                        <div class="grid-row">
+                            @for (int col = 0; col < GameState.GridSize; col++)
+                            {
+                                var r = row;
+                                var c = col;
+                                var cell = GameState.PlayerGrid[r, c];
+                                <div class="grid-cell player-cell @GetPlayerCellClass(cell)">
+                                    @if (cell == 'X')
+                                    {
+                                        <img src="images/hit.png" alt="Touché" />
+                                    }
+                                    else if (cell == 'O')
+                                    {
+                                        <img src="images/miss.png" alt="Raté" />
+                                    }
+                                    else if (cell != '\0')
+                                    {
+                                        <span class="ship-letter">@cell</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Grille de l'adversaire -->
+            <div class="grid-section">
+                <h3>🎯 Grille Adverse</h3>
+                <div class="grid opponent-grid">
+                    @for (int row = 0; row < GameState.GridSize; row++)
+                    {
+                        <div class="grid-row">
+                            @for (int col = 0; col < GameState.GridSize; col++)
+                            {
+                                var r = row;
+                                var c = col;
+                                var cell = GameState.OpponentGrid[r, c];
+                                <div class="grid-cell opponent-cell @GetOpponentCellClass(cell)" 
+                                     @onclick="() => OnCellClick(r, c)">
+                                    @if (cell == true)
+                                    {
+                                        <img src="images/hit.png" alt="Touché" />
+                                    }
+                                    else if (cell == false)
+                                    {
+                                        <img src="images/miss.png" alt="Raté" />
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" @onclick="ResetGame">🔄 Nouvelle Partie</button>
+        </div>
+
+        <!-- Console d'historique -->
+        <div class="history-console">
+            <h3>📜 Historique des coups</h3>
+            
+            <div class="history-controls">
+                <button class="btn btn-undo" @onclick="UndoLastMove" disabled="@(GameState.MoveHistory.Count == 0)">
+                    ⬅️ Annuler dernier coup
+                </button>
+                <button class="btn btn-undo" @onclick="@(() => UndoMultipleMoves(3))" disabled="@(GameState.MoveHistory.Count < 3)">
+                    ⏪ Annuler 3 coups
+                </button>
+                <button class="btn btn-undo" @onclick="@(() => UndoMultipleMoves(5))" disabled="@(GameState.MoveHistory.Count < 5)">
+                    ⏪ Annuler 5 coups
+                </button>
+            </div>
+
+            <div class="history-list">
+                @if (GameState.MoveHistory.Count == 0)
+                {
+                    <p class="no-history">Aucun coup joué pour le moment</p>
+                }
+                else
+                {
+                    @foreach (var move in GameState.MoveHistory.AsEnumerable().Reverse().Take(10))
+                    {
+                        <div class="history-item @(move.IsPlayerMove ? "player-move" : "ai-move")">
+                            <span class="move-icon">@(move.IsPlayerMove ? "🎯" : "🤖")</span>
+                            <span class="move-player">@(move.IsPlayerMove ? "Joueur" : "IA")</span>
+                            <span class="move-coords">(@move.Row, @move.Column)</span>
+                            <span class="move-result @(move.IsHit ? "hit" : "miss")">
+                                @if (move.IsHit)
+                                {
+                                    <text>✅ Touché @(move.HitShipLetter != null ? $"({move.HitShipLetter})" : "")</text>
+                                }
+                                else
+                                {
+                                    <text>❌ Raté</text>
+                                }
+                            </span>
+                            <span class="move-time">@move.Timestamp.ToString("HH:mm:ss")</span>
+                        </div>
+                    }
+                    
+                    @if (GameState.MoveHistory.Count > 10)
+                    {
+                        <p class="more-history">... et @(GameState.MoveHistory.Count - 10) coups précédents</p>
+                    }
+                }
+            </div>
+        </div>
+    }
+    else if (GameState.GameStatus == "GameOver")
+    {
+        <div class="game-over">
+            @if (GameState.Winner == "Player")
+            {
+                <h2 class="victory">🎉 Vous avez gagné !</h2>
+                <p>Félicitations ! Vous avez coulé tous les bateaux adverses !</p>
+                
+                <!-- Statistiques finales -->
+                <div class="final-stats">
+                    <h3>📊 Statistiques</h3>
+                    <p>🎯 Précision: @GetAccuracy(GameState.PlayerHits, GameState.PlayerMisses)</p>
+                    <p>💥 Coups réussis: @GameState.PlayerHits</p>
+                    <p>❌ Coups ratés: @GameState.PlayerMisses</p>
+                    <p>⏱️ Durée: @GetDuration()</p>
+                    <p>🚢 Bateaux coulés: @GameState.ComputerShipsSunk</p>
+                </div>
+
+                <!-- Formulaire pour sauvegarder le score -->
+                @if (!scoreSaved)
+                {
+                    <div class="save-score">
+                        <input type="text" @bind="playerName" placeholder="Entrez votre nom" class="player-name-input" />
+                        <button class="btn btn-success" @onclick="SaveScore">💾 Sauvegarder mon score</button>
+                    </div>
+                }
+                else
+                {
+                    <p class="score-saved">✅ Score sauvegardé dans le leaderboard !</p>
+                }
+            }
+            else
+            {
+                <h2 class="defeat">😢 Vous avez perdu !</h2>
+                <p>L'ordinateur a coulé tous vos bateaux.</p>
+                
+                <!-- Statistiques finales -->
+                <div class="final-stats">
+                    <h3>📊 Statistiques</h3>
+                    <p>🎯 Précision: @GetAccuracy(GameState.PlayerHits, GameState.PlayerMisses)</p>
+                    <p>💥 Coups réussis: @GameState.PlayerHits</p>
+                    <p>❌ Coups ratés: @GameState.PlayerMisses</p>
+                    <p>⏱️ Durée: @GetDuration()</p>
+                    <p>🚢 Bateaux coulés: @GameState.ComputerShipsSunk</p>
+                </div>
+            }
+            
+            <p>Total de coups : @GameState.MovesCount</p>
+            
+            <button class="btn btn-primary" @onclick="ResetGame">🎮 Rejouer</button>
+        </div>
+    }
+</div>
+
+@code {
+    private string playerName = "Joueur";
+    private bool scoreSaved = false;
+
+    protected override void OnInitialized()
+    {
+        GameState.OnChange += StateHasChanged;
+    }
+
+    private async Task StartGame(string difficulty)
+    {
+        scoreSaved = false;
+        await ApiService.StartNewGameAsync(difficulty);
+    }
+
+    private async Task OnCellClick(int row, int col)
+    {
+        // Vérifier que la case n'a pas déjà été attaquée
+        if (GameState.OpponentGrid[row, col] != null)
+            return;
+
+        // Effectuer l'attaque
+        await ApiService.AttackAsync(row, col);
+    }
+
+    private async Task UndoLastMove()
+    {
+        await ApiService.UndoMovesAsync(1);
+    }
+
+    private async Task UndoMultipleMoves(int count)
+    {
+        await ApiService.UndoMovesAsync(count);
+    }
+
+    private void ResetGame()
+    {
+        scoreSaved = false;
+        GameState.Reset();
+    }
+
+    private async Task SaveScore()
+    {
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            playerName = "Joueur";
+        }
+
+        var success = await ApiService.EndGameAsync(playerName);
+        if (success)
+        {
+            scoreSaved = true;
+        }
+    }
+
+    private string GetAccuracy(int hits, int misses)
+    {
+        var total = hits + misses;
+        if (total == 0) return "0%";
+        var accuracy = (double)hits / total * 100;
+        return $"{accuracy:F1}%";
+    }
+
+    private string GetDuration()
+    {
+        if (!GameState.StartTime.HasValue)
+            return "0s";
+
+        var duration = GameState.EndTime.HasValue 
+            ? GameState.EndTime.Value - GameState.StartTime.Value
+            : DateTime.UtcNow - GameState.StartTime.Value;
+
+        if (duration.TotalMinutes < 1)
+            return $"{duration.Seconds}s";
+        if (duration.TotalHours < 1)
+            return $"{duration.Minutes}m {duration.Seconds}s";
+        return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+    }
+
+    private string GetPlayerCellClass(char cell)
+    {
+        if (cell == 'X') return "hit";
+        if (cell == 'O') return "miss";
+        if (cell != '\0') return "ship";
+        return "";
+    }
+
+    private string GetOpponentCellClass(bool? cell)
+    {
+        if (cell == true) return "hit";
+        if (cell == false) return "miss";
+        return "clickable";
+    }
+
+    public void Dispose()
+    {
+        GameState.OnChange -= StateHasChanged;
+    }
+}

@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+option csharp_namespace = "BattleShip.Grpc";
+
+package battleship;
+
+// Service de bataille navale
+service BattleShipService {
+  // Démarre une nouvelle partie
+  rpc StartGame (StartGameRequest) returns (StartGameResponse);
+  
+  // Effectue une attaque
+  rpc Attack (AttackRequest) returns (AttackResponse);
+  
+  // Récupère l'état d'une partie
+  rpc GetGameState (GetGameStateRequest) returns (GetGameStateResponse);
+  
+  // Annule des coups
+  rpc UndoMoves (UndoMovesRequest) returns (UndoMovesResponse);
+  
+  // Récupère le leaderboard
+  rpc GetLeaderboard (GetLeaderboardRequest) returns (GetLeaderboardResponse);
+  
+  // Termine une partie et l'ajoute au leaderboard
+  rpc EndGame (EndGameRequest) returns (EndGameResponse);
+}
+
+// Messages
+
+message StartGameRequest {
+  string difficulty = 1; // "Easy", "Medium", "Hard"
+}
+
+message StartGameResponse {
+  string game_id = 1;
+  int32 grid_size = 2;
+  repeated string player_grid = 3; // Tableau sérialisé en strings
+  repeated ShipInfo ships = 4;
+}
+
+message ShipInfo {
+  string letter = 1;
+  int32 size = 2;
+}
+
+message AttackRequest {
+  string game_id = 1;
+  int32 row = 2;
+  int32 column = 3;
+}
+
+message AttackResponse {
+  string player_attack_result = 1; // "Miss", "Hit", "Sunk"
+  string hit_ship_letter = 2;
+  AttackInfo ai_attack = 3;
+  string game_state = 4; // "Playing", "GameOver"
+  string winner = 5; // "Player", "AI", ou vide
+  repeated string player_grid = 6;
+  repeated string opponent_view = 7;
+}
+
+message AttackInfo {
+  int32 row = 1;
+  int32 column = 2;
+  string result = 3;
+  string hit_ship_letter = 4;
+}
+
+message GetGameStateRequest {
+  string game_id = 1;
+}
+
+message GetGameStateResponse {
+  string game_id = 1;
+  int32 grid_size = 2;
+  string game_state = 3;
+  repeated string player_grid = 4;
+  repeated string opponent_view = 5;
+  repeated MoveInfo move_history = 6;
+}
+
+message MoveInfo {
+  string move_id = 1;
+  int64 timestamp = 2; // Unix timestamp
+  int32 row = 3;
+  int32 column = 4;
+  bool is_player_move = 5;
+  bool is_hit = 6;
+  string hit_ship_letter = 7;
+}
+
+message UndoMovesRequest {
+  string game_id = 1;
+  int32 count = 2;
+}
+
+message UndoMovesResponse {
+  int32 undone_count = 1;
+  string game_state = 2;
+  string winner = 3;
+  repeated string player_grid = 4;
+  repeated string opponent_view = 5;
+}
+
+message GetLeaderboardRequest {
+  int32 count = 1; // Nombre d'entrées à retourner
+}
+
+message GetLeaderboardResponse {
+  repeated LeaderboardEntry entries = 1;
+}
+
+message LeaderboardEntry {
+  string player_name = 1;
+  int32 score = 2;
+  string difficulty = 3;
+  google.protobuf.Timestamp date = 4;
+  google.protobuf.Duration duration = 5;
+  double accuracy = 6;
+  bool victory = 7;
+  int32 player_hits = 8;
+  int32 total_shots = 9;
+}
+
+message EndGameRequest {
+  string game_id = 1;
+  string player_name = 2;
+}
+
+message EndGameResponse {
+  bool success = 1;
+  string message = 2;
+}

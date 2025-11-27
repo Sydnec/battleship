@@ -1,0 +1,71 @@
+﻿@page "/"
+@using BattleShip.App.Components
+
+<PageTitle>Bataille Navale</PageTitle>
+
+<div class="home-container">
+    <div class="tabs">
+        <button class="tab-button @(activeTab == "game" ? "active" : "")" @onclick="@(() => activeTab = "game")">
+            🎮 Jouer
+        </button>
+        <button class="tab-button @(activeTab == "leaderboard" ? "active" : "")" @onclick="@(() => activeTab = "leaderboard")">
+            🏆 Classement
+        </button>
+    </div>
+
+    <div class="tab-content">
+        @if (activeTab == "game")
+        {
+            <Game />
+        }
+        else
+        {
+            <Leaderboard />
+        }
+    </div>
+</div>
+
+@code {
+    private string activeTab = "game";
+}
+
+<style>
+    .home-container {
+        width: 100%;
+    }
+
+    .tabs {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .tab-button {
+        padding: 12px 30px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border: 2px solid white;
+        background: transparent;
+        color: white;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .tab-button:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .tab-button.active {
+        background: white;
+        color: #667eea;
+    }
+
+    .tab-content {
+        padding: 20px;
+    }
+</style>
+

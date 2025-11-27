@@ -1,0 +1,110 @@
+@page "/grpc-test"
+@using BattleShip.App.Services
+@inject BattleShipGrpcClient GrpcClient
+
+<h3>Test gRPC</h3>
+
+<div class="test-container">
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error">@errorMessage</div>
+    }
+    
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="success">@successMessage</div>
+    }
+
+    <button @onclick="TestStartGame">Tester StartGame (gRPC)</button>
+    
+    @if (!string.IsNullOrEmpty(gameId))
+    {
+        <div class="result">
+            <p><strong>Game ID:</strong> @gameId</p>
+            <p><strong>Grid Size:</strong> @gridSize</p>
+            <p><strong>Nombre de bateaux:</strong> @shipCount</p>
+        </div>
+    }
+</div>
+
+@code {
+    private string? errorMessage;
+    private string? successMessage;
+    private string? gameId;
+    private int gridSize;
+    private int shipCount;
+
+    private async Task TestStartGame()
+    {
+        try
+        {
+            errorMessage = null;
+            successMessage = null;
+            gameId = null;
+
+            var response = await GrpcClient.StartGameAsync("Medium");
+            
+            gameId = response.GameId;
+            gridSize = response.GridSize;
+            shipCount = response.Ships.Count;
+            
+            successMessage = "✅ Connexion gRPC réussie !";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"❌ Erreur: {ex.Message}";
+        }
+    }
+}
+
+<style>
+    .test-container {
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    button {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    button:hover {
+        background: #0056b3;
+    }
+
+    .error {
+        padding: 15px;
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+
+    .success {
+        padding: 15px;
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+
+    .result {
+        padding: 15px;
+        background: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+
+    .result p {
+        margin: 5px 0;
+    }
+</style>
