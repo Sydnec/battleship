@@ -1,0 +1,60 @@
+# Build results
+bin/
+obj/
+dist/
+
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Rider
+.idea/
+*.sln.iml
+
+# Compiled output
+*.dll
+*.exe
+*.pdb
+
+# NuGet
+.nuget/
+*.nupkg
+*.snupkg
+packages/
+
+# Local environment
+.env
+.env.local
+appsettings.local.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+publish/
+PublishProfiles/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp

@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+option csharp_namespace = "BattleShip.Protos";
+
+package battleship;
+
+service GrpcGame {
+  rpc CreateGame (CreateGameRequestProto) returns (GameProto);
+  rpc JoinGame (JoinGameRequestProto) returns (GameProto);
+  rpc Shoot (ShootRequestProto) returns (GameStateProto);
+  rpc GetGame (GetGameRequestProto) returns (GameProto);
+  rpc RestartGame (RestartGameRequestProto) returns (GameProto);
+  rpc PlaceShips (PlaceShipsRequestProto) returns (GameProto);
+  rpc UndoLastMove (UndoLastMoveRequestProto) returns (GameProto);
+  rpc GetLeaderboard (GetLeaderboardRequestProto) returns (LeaderboardProto);
+}
+
+message CreateGameRequestProto {
+  string playerId = 1;
+  bool isSinglePlayer = 2;
+  int32 difficulty = 3;
+}
+
+message JoinGameRequestProto {
+  string gameId = 1;
+  string playerId = 2;
+}
+
+message PlaceShipsRequestProto {
+  string gameId = 1;
+  string playerId = 2;
+  repeated ShipPlacementProto ships = 3;
+}
+
+message ShipPlacementProto {
+  string name = 1;
+  int32 size = 2;
+  int32 row = 3;
+  int32 col = 4;
+  int32 orientation = 5;
+}
+
+message RestartGameRequestProto {
+  string gameId = 1;
+  string playerId = 2;
+}
+
+message UndoLastMoveRequestProto {
+  string gameId = 1;
+}
+
+message GetLeaderboardRequestProto {}
+
+message LeaderboardProto {
+  repeated LeaderboardEntryProto entries = 1;
+}
+
+message LeaderboardEntryProto {
+  string playerId = 1;
+  int32 wins = 2;
+}
+
+message ShootRequestProto {
+  string gameId = 1;
+  string playerId = 2;
+  int32 row = 3;
+  int32 col = 4;
+}
+
+message GetGameRequestProto {
+  string gameId = 1;
+}
+
+message GameProto {
+  string id = 1;
+  string player1Id = 2;
+  optional string player2Id = 3;
+  string currentTurnPlayerId = 4;
+  int32 status = 5; // Enum value
+  optional string winnerId = 6;
+  bool isSinglePlayer = 7;
+  // Simplified boards for proto if needed, or just what's necessary for UI
+  // For now, let's assume we might need to map boards if the UI uses them from Game object
+  // But looking at Home.razor, it uses Game object.
+  // Let's map minimal needed or full structure.
+  // Home.razor uses: Status, CurrentTurnPlayerId, WinnerId, Player1Board.Ships (for HasMyShip)
+  BoardProto player1Board = 8;
+  BoardProto player2Board = 9;
+}
+
+message BoardProto {
+  repeated ShipProto ships = 1;
+  repeated ShotEntryProto shotsFired = 2;
+  int32 size = 3;
+}
+
+message ShipProto {
+  string name = 1;
+  int32 size = 2;
+  int32 orientation = 3;
+  CoordinateProto startPosition = 4;
+  repeated CoordinateProto occupiedCoordinates = 5;
+  int32 hits = 6;
+  bool isSunk = 7;
+}
+
+message CoordinateProto {
+  int32 row = 1;
+  int32 col = 2;
+}
+
+message ShotEntryProto {
+  CoordinateProto coordinate = 1;
+  int32 state = 2;
+}
+
+message GameStateProto {
+  string gameId = 1;
+  string currentTurnPlayerId = 2;
+  int32 status = 3;
+  optional string winnerId = 4;
+  repeated ShotResultProto myShots = 5;
+  repeated ShotResultProto opponentShots = 6;  repeated MoveHistoryProto history = 7;
+}
+
+message MoveHistoryProto {
+  string playerId = 1;
+  int32 row = 2;
+  int32 col = 3;
+  string result = 4;
+  string sunkShipName = 5;}
+
+message ShotResultProto {
+  int32 row = 1;
+  int32 col = 2;
+  int32 state = 3;
+}
